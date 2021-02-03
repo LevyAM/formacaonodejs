@@ -14,7 +14,7 @@ const connection = require("./database/database");
 
 //cria model Pergunta na base de dados
 const Pergunta = require('./database/Pergunta');
-
+const Resposta = require('./database/Resposta');
 
 connection.authenticate()
     .then(() => {
@@ -39,8 +39,6 @@ app.get("/", (req, res) => {
     ]})
     .then((perguntas) => {res.render("index.ejs", {perguntas:perguntas});}
     )
-
-    
 });
 
 app.get("/perguntar", (req, res) => {
@@ -58,5 +56,38 @@ app.post("/salvarpergunta", (req,res) => {
         res.redirect("/")
     })
 });
+
+app.get("/pergunta/:id", (req, res) => {
+    var id = req.params.id;
+    Pergunta.findOne({
+        where: {id:id}
+    }).then(pergunta => {
+        if(pergunta != undefined){
+            
+            Resposta.findAll({
+                where: {perguntaId: pergunta.id},
+                order: [['id', 'DESC']]
+            }).then(respostas => {
+                res.render("pergunta.ejs", {
+                    pergunta: pergunta,
+                    respostas: respostas
+                });
+            });
+        }else{
+            res.redirect("/")
+        }
+    })
+});
+
+app.post("/responder", (req, res) => {
+    var corpo = req.body.corpo;
+    var perguntaId = req.body.pergunta;
+    Resposta.create({
+        corpo: corpo,
+        perguntaId: perguntaId
+    }).then(() => {
+        res.redirect("/pergunta/"+perguntaId)
+    })
+})
 
 app.listen(PORT, ()=>{console.log("App rodando");});
