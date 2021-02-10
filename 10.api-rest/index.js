@@ -1,143 +1,129 @@
-import express from "express";
-import bodyParser from "body-parser";
+const express = require("express")
+const bodyParser = require("body-parser");
+const dotenv = require("dotenv");
+
+dotenv.config({path: "./config/config.env"});
 
 const app = express();
+
+const PORT = process.env.MY_PORT;
+
+console.log(`Hostname:${process.env.BD_HOSTNAME}`)
+
+
+const Game = require("./database/Game");
+const connection = require("./database/database.js");
+
+connection.authenticate().then(() =>{
+	console.log("Conexão bem sucedida com o banco de dados");
+}).catch((err) => {
+	console.log("Conexão falhou com o banco de dados", err);
+})
+
 
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
 
-var DB = {
 
-	games: [
-		{
-			id: 101,
-			title: "Batman",
-			year: "2016",
-			price: 130
-		},
-		{
-			id: 102,
-			title: "Dragon Ball Ultimate",
-			year: "2017",
-			price: 200
-		},
-		{
-			id: 103,
-			title: "Dragon Age: Inquisition",
-			year: "2013",
-			price: 70
-		},
-		{
-			id: 104,
-			title: "New World",
-			year: "2021",
-			price: 250
-		},
-		{
-			id: 105,
-			title: "Spider-Man",
-			year: "2019",
-			price: 150
-		}
-	]
+app.get("/games", async (req, res) => {
 
-}
-
-app.get("/games", (req, res) => {
-	res.statusCode = 200
-	res.json(DB.games);
+	try {
+		let allGames = await Game.findAll({raw:true, order: [
+			['id', 'ASC']
+		]});
+		allGames ? res.status(200).json(allGames) : res.sendStatus(204);
+	} catch (error) {
+		res.sendStatus(400)
+	}
+	
 })
 
-app.get("/games/:id", (req, res) => {
+app.get("/games/:id", async (req, res) => {
 	
 	if(isNaN(req.params.id)){
 		res.sendStatus(400);
 	} else {
-		let id = parseInt(req.params.id)
-		let game = DB.games.find(game => game.id == id);
 
-		if(game != undefined){
-			res.statusCode = 200;
-			res.json(game);
-		} else {
+		try {
+			let id = parseInt(req.params.id)
+			let game = await Game.findOne({where: {id:id}});
+
+			if(game.id != undefined){
+				res.statusCode = 200;
+				res.json(game);
+		}
+		} catch (error) {
 			res.sendStatus(404);
 		}
 
 	}
-	
+
 	
 })
 
-app.post("/game", (req, res) => {
-
+app.post("/game", async (req, res) => {
 	let {title, year, price} = req.body;
-
-	if(isNaN(price) || isNaN(year)){
-		res.sendStatus(400);
-	} else {
-		
-		DB.games.push({
-			id: 106,
-			title,
-			year,
-			price
+	try {
+		await Game.create({
+			title: title,
+			year: year,
+			price: price
 		});
-		res.sendStatus(201);
+  		res.sendStatus(201);
+	} catch (error) {
+		console.log(error)
+		res.sendStatus(400);
 	}
-
 });
 
-app.delete("/game/:id", (req,res) => {
+app.delete("/game/:id", async (req,res) => {
 	if(isNaN(req.params.id)){
 		res.sendStatus(404);
 	} else {
-		let id = parseInt(req.params.id);
-		let index = DB.games.findIndex(game => game.id == id)
+		try {
+			let id = parseInt(req.params.id);
+			let index = await Game.findOne({where: {id:id}})
 
-		if(index != -1){
-			DB.games.splice(index, 1);
-			res.sendStatus(200);
-		}else {
+			if(index != -1){
+				await Game.destroy({where: {id: id}});
+				res.sendStatus(200);
+		}
+		} catch (error) {
 			res.sendStatus(404);
 		}
 	}
 })
 
-app.put("/game/:id", (req, res) => {
+app.put("/game/:id", async (req, res) => {
 	if(isNaN(req.params.id)){
 		res.sendStatus(404)
 	} else {
-		let id = parseInt(req.params.id);
-		let game = DB.games.find(game => game.id == id);
-		let {title, year, price} = req.body;
-	
-		if(game != undefined){
 
-			if(title != undefined || year != undefined || price != undefined){
-				
-				
-				game.title = title;
-				game.price = price;
-				game.year = year;
+		try {
+			let id = parseInt(req.params.id);
+			let {title, year, price} = req.body;
+			let game = await Game.findOne({where: {id:id}});
+			
+		
+			if(game.id != undefined){
+				await Game.update({
+				title: title,
+				year: year,
+				price: price
+				}, {where: {id:id}})
 				res.sendStatus(200);
 			}
-			
-		} else {
+		}
+			catch (error) {
 			res.sendStatus(404)
+		}
 			
 		}
 	}
-})
+)
 
 
-
-
-
-
-
-
-
-app.listen(3000, () => {
+app.listen(PORT, () => {
     console.log("API executando!")
 })
