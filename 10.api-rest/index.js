@@ -32,14 +32,26 @@ app.use(bodyParser.json());
 function auth(req,res,next) {
 
 	const authToken = req.headers.authorization;
-	//A FAZER
+	if(authToken != undefined){
 
+		[, token] = authToken.split(' ');
+
+		jwt.verify(token, jwtSecret, (err, data) => {
+			if(err){
+				res.status(401);
+				res.json({err: "Token inválido"});
+			}else{
+				req.token = token;
+				req.loggedUser = {id: data.id, email: data.email};
+				next();
+			}
+		})
+
+	}else {
+		res.status(401);
+		res.json({err: "Token inválido"});
+	}
 }
-
-
-
-
-
 
 app.post("/auth", async (req, res) => {
 	let {email, password} = req.body;
@@ -77,7 +89,7 @@ app.post("/auth", async (req, res) => {
 
 
 
-app.get("/users", async (req, res) => {
+app.get("/users", auth, async (req, res) => {
 	try {
 		let allUsers = await User.findAll({raw:true, order: [['id', 'ASC']]});
 		allUsers ? res.status(200).json(allUsers) : res.sendStatus(204);
@@ -90,7 +102,7 @@ app.get("/users", async (req, res) => {
 
 
 
-app.post("/user", async (req, res) => {
+app.post("/user", auth,async (req, res) => {
 	let {name, email, password} = req.body;
 	try {
 		await User.create({
@@ -106,7 +118,7 @@ app.post("/user", async (req, res) => {
 });
 
 
-app.get("/games", async (req, res) => {
+app.get("/games", auth,async (req, res) => {
 
 	try {
 		let allGames = await Game.findAll({raw:true, order: [
@@ -120,7 +132,7 @@ app.get("/games", async (req, res) => {
 })
 
 
-app.get("/games/:id", async (req, res) => {
+app.get("/games/:id", auth,async (req, res) => {
 	
 	if(isNaN(req.params.id)){
 		res.sendStatus(400);
@@ -143,7 +155,7 @@ app.get("/games/:id", async (req, res) => {
 	
 })
 
-app.post("/game", async (req, res) => {
+app.post("/game", auth,async (req, res) => {
 	let {title, year, price} = req.body;
 	try {
 		await Game.create({
@@ -158,7 +170,7 @@ app.post("/game", async (req, res) => {
 	}
 });
 
-app.delete("/game/:id", async (req,res) => {
+app.delete("/game/:id", auth,async (req,res) => {
 	if(isNaN(req.params.id)){
 		res.sendStatus(404);
 	} else {
@@ -176,7 +188,7 @@ app.delete("/game/:id", async (req,res) => {
 	}
 })
 
-app.put("/game/:id", async (req, res) => {
+app.put("/game/:id", auth,async (req, res) => {
 	if(isNaN(req.params.id)){
 		res.sendStatus(404)
 	} else {
