@@ -1,6 +1,28 @@
+let axiosConfig = {
+	headers: {
+	  authorization: "Bearer " + localStorage.getItem("token")
+	}
+  }
+
+function login(){
+  let email = document.getElementById("email").value;
+  let password = document.getElementById("password").value;
+
+  axios.post("http://localhost:8080/auth", {email, password}).then( res => {
+	  let token = res.data.token;
+	  localStorage.setItem("token", token);
+	  axiosConfig.headers.authorization = "Bearer " + localStorage.getItem("token");
+  }).catch(error => {
+	  alert("Login incorreto");
+  })
+
+}
+
+
+
 async function getGames() {
   try {
-    const response = await axios.get("http://localhost:8080/games");
+    const response = await axios.get("http://localhost:8080/games", axiosConfig);
     let games = response.data;
     let list = document.getElementById("games");
     games.forEach((game) => {
@@ -43,7 +65,7 @@ async function createGame() {
   };
 
   try {
-    await axios.post("http://localhost:8080/game", game);
+    await axios.post("http://localhost:8080/game", game, axiosConfig);
   } catch (error) {
     console.log(error);
   }
@@ -53,7 +75,7 @@ async function deleteGame(listItem) {
     let id = listItem.getAttribute("data-id");
     console.log(id)
     try {
-        await axios.delete("http://localhost:8080/game/"+id);
+        await axios.delete("http://localhost:8080/game/"+id, axiosConfig);
     } catch (error) {
         console.log(error)
     }
@@ -87,10 +109,13 @@ async function updateGame() {
     let id = idInput.value;
   
     try {
-      await axios.put("http://localhost:8080/game/"+id, game);
+      await axios.put("http://localhost:8080/game/"+id, game, axiosConfig);
     } catch (error) {
       console.log(error);
     }
   }
 
+  
+
 getGames();
+
